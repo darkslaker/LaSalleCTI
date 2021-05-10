@@ -1,0 +1,51 @@
+version: "3.7"
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.1
+    container_name: elasticsearch
+    restart: always
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:7.10.1
+    restart: always
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200    # address of elasticsearch docker container which kibana will connect
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch                                   # kibana will start when elasticsearch has started
+    cortex:
+      image: thehiveproject/cortex:3.1.0-1
+      container_name: cortex
+      restart: always
+      depends_on:
+        - elasticsearch
+      ports:
+        - 9001:9001
+    thehive:
+      container_name: thehive
+      image: thehiveproject/thehive:3.5.0-1
+      restart: always
+      ports:
+        - 9000:9000
+      depends_on:
+        - elasticsearch                                   # The Hive will start when elasticsearch has started
+      command: --cortex-port 9001
+  volumes:
+  elasticsearch-data:
