@@ -30,22 +30,22 @@ services:
       - 5601:5601
     depends_on:
       - elasticsearch                                   # kibana will start when elasticsearch has started
-    cortex:
-      image: thehiveproject/cortex:3.1.0-1
-      container_name: cortex
-      restart: always
-      depends_on:
-        - elasticsearch
-      ports:
-        - 9001:9001
-    thehive:
-      container_name: thehive
-      image: thehiveproject/thehive:3.5.0-1
-      restart: always
-      ports:
-        - 9000:9000
-      depends_on:
-        - elasticsearch                                   # The Hive will start when elasticsearch has started
-      command: --cortex-port 9001
-  volumes:
+  cortex:
+    image: thehiveproject/cortex:3.1.0-1
+    container_name: cortex
+    restart: always
+    depends_on:
+      - elasticsearch
+    ports:
+      - 9001:9001
+  thehive:
+    container_name: thehive
+    image: thehiveproject/thehive:3.5.0-1
+    restart: always
+    ports:
+      - 9000:9000
+    depends_on:
+      - elasticsearch                                   # The Hive will start when elasticsearch has started
+    command: --cortex-port 9001
+volumes:
   elasticsearch-data:
