@@ -49,36 +49,47 @@ services:
       command: --cortex-port 9001
   volumes:
   elasticsearch-data:
-  web:
-    build: web
+  #MISP image based on 
+  redis:
+    image: redis:5.0.6
+  db:
+    image: mysql:8.0.19
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      - "MYSQL_USER=misp"
+      - "MYSQL_PASSWORD=example"
+      - "MYSQL_ROOT_PASSWORD=password"
+      - "MYSQL_DATABASE=misp"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    cap_add:
+      - SYS_NICE  # CAP_SYS_NICE Prevent runaway mysql log
+
+  misp:
+    image: coolacid/misp-docker:core-latest
     depends_on:
+      - redis
       - db
-    container_name: misp_web
-    image: misp:latest
-    restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - /dev/urandom:/dev/random
-      - /home/cti/src/misp-docker/web:/var/www/MISP
+      - "./server-configs/:/var/www/MISP/app/Config/"
+      - "./logs/:/var/www/MISP/app/tmp/logs/"
+      - "./files/:/var/www/MISP/app/files"
+      - "./ssl/:/etc/nginx/certs"
     environment:
-      - MYSQL_HOST=${MYSQL_HOST}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MISP_ADMIN_EMAIL=${MISP_ADMIN_EMAIL}
-      - MISP_ADMIN_PASSPHRASE=${MISP_ADMIN_PASSPHRASE}
-      - MISP_BASEURL=${MISP_BASEURL}
-      - POSTFIX_RELAY_HOST=${POSTFIX_RELAY_HOST}
-      - TIMEZONE=${TIMEZONE}
-    db:
-      container_name: misp_db
-      image: mysql/mysql-server:5.7
-      restart: unless-stopped
-      volumes:
-        - /home/cti/src/misp-docker/db:/var/lib/mysql
-      environment:
-        - MYSQL_DATABASE=${MYSQL_DATABASE}
-        - MYSQL_USER=${MYSQL_USER}
-        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - "HOSTNAME=https://localhost"
+      - "REDIS_FQDN=redis"
+      - "INIT=true"             # Initialze MISP, things includes, attempting to import SQL and the Files DIR
+      - "CRON_USER_ID=1"        # The MISP user ID to run cron jobs as
+  misp-modules:
+    image: coolacid/misp-docker:modules-latest
+    environment:
+      - "REDIS_BACKEND=redis"
+    depends_on:
+      - redis
+      - db
+volumes:
+    mysql_data:
